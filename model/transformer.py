@@ -30,12 +30,14 @@ def maybe_lora_layer(
     rank = rank or args.lora.rank
     scaling = args.lora.scaling
     dropout = args.lora.dropout
+    decompose = args.lora.decompose
 
     MaybeLora = partial(
         LoRALinear,
         rank=rank,
         scaling=scaling,
         dropout=dropout,
+        decompose=decompose,
     )
 
     return MaybeLora

@@ -32,6 +32,15 @@ def merge_checkpoints(
             lora_B_weight = lora_checkpoint[key.replace("lora_A", "lora_B")].to("cuda")
 
             weight = lora_B_weight.mm(lora_A_weight) * scaling
+
+            
+            magnitude_key = key.replace("lora_A.weight", "lora_magnitude")
+            if magnitude_key in lora_checkpoint:
+                lora_magnitude = lora_checkpoint[magnitude_key].to("cuda")
+                weight_norm = weight.norm(p=2, dim=1, keepdim=True) + 1e-9
+                lora_output_norm_weight = weight / weight_norm
+                weight = lora_magnitude * lora_output_norm_weight
+
             weight += model_checkpoint[weight_name].to("cuda")
             weight = weight.to(save_dtype)
 

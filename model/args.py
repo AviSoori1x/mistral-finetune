@@ -10,6 +10,7 @@ class LoraArgs(Serializable):
     rank: int = 16
     dropout: float = 0.0
     scaling: float = 2.0
+    decompose: bool = False
 
     def __post_init__(self):
         if self.enable:

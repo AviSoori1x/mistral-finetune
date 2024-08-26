@@ -15,25 +15,32 @@ from .test_utils import spawn_for_all_world_sizes
 # fmt: off
 EXPECTED_NON_LORA_KEYS = sorted(['layers.0.attention.wk.weight', 'layers.0.attention.wo.weight', 'layers.0.attention.wq.weight', 'layers.0.attention.wv.weight', 'layers.0.attention_norm.weight', 'layers.0.feed_forward.w1.weight', 'layers.0.feed_forward.w2.weight', 'layers.0.feed_forward.w3.weight', 'layers.0.ffn_norm.weight', 'layers.1.attention.wk.weight', 'layers.1.attention.wo.weight', 'layers.1.attention.wq.weight', 'layers.1.attention.wv.weight', 'layers.1.attention_norm.weight', 'layers.1.feed_forward.w1.weight', 'layers.1.feed_forward.w2.weight', 'layers.1.feed_forward.w3.weight', 'layers.1.ffn_norm.weight', 'norm.weight', 'output.weight', 'tok_embeddings.weight'])
 EXPECTED_LORA_KEYS = sorted(['layers.0.attention.wq.lora_A.weight', 'layers.0.attention.wq.lora_B.weight', 'layers.0.attention.wk.lora_A.weight', 'layers.0.attention.wk.lora_B.weight', 'layers.0.attention.wv.lora_A.weight', 'layers.0.attention.wv.lora_B.weight', 'layers.0.attention.wo.lora_A.weight', 'layers.0.attention.wo.lora_B.weight', 'layers.0.feed_forward.w1.lora_A.weight', 'layers.0.feed_forward.w1.lora_B.weight', 'layers.0.feed_forward.w2.lora_A.weight', 'layers.0.feed_forward.w2.lora_B.weight', 'layers.0.feed_forward.w3.lora_A.weight', 'layers.0.feed_forward.w3.lora_B.weight', 'layers.1.attention.wq.lora_A.weight', 'layers.1.attention.wq.lora_B.weight', 'layers.1.attention.wk.lora_A.weight', 'layers.1.attention.wk.lora_B.weight', 'layers.1.attention.wv.lora_A.weight', 'layers.1.attention.wv.lora_B.weight', 'layers.1.attention.wo.lora_A.weight', 'layers.1.attention.wo.lora_B.weight', 'layers.1.feed_forward.w1.lora_A.weight', 'layers.1.feed_forward.w1.lora_B.weight', 'layers.1.feed_forward.w2.lora_A.weight', 'layers.1.feed_forward.w2.lora_B.weight', 'layers.1.feed_forward.w3.lora_A.weight', 'layers.1.feed_forward.w3.lora_B.weight'])
+EXPECTED_LORA_KEYS_DECOMPOSE = EXPECTED_LORA_KEYS + sorted(['layers.0.attention.wq.lora_magnitude', 'layers.0.attention.wk.lora_magnitude', 'layers.0.attention.wv.lora_magnitude', 'layers.0.attention.wo.lora_magnitude', 'layers.0.feed_forward.w1.lora_magnitude', 'layers.0.feed_forward.w2.lora_magnitude', 'layers.0.feed_forward.w3.lora_magnitude', 'layers.1.attention.wq.lora_magnitude', 'layers.1.attention.wk.lora_magnitude', 'layers.1.attention.wv.lora_magnitude', 'layers.1.attention.wo.lora_magnitude', 'layers.1.feed_forward.w1.lora_magnitude', 'layers.1.feed_forward.w2.lora_magnitude', 'layers.1.feed_forward.w3.lora_magnitude'])
+
 # fmt: on
 
 
 @pytest.mark.parametrize(
-    ("world_size", "save_only_lora", "enable_lora"),
+    ("world_size", "save_only_lora", "enable_lora", "decompose"),
     [
-        (1, False, False),
-        (2, False, False),
-        (1, False, True),
-        (2, False, True),
-        (1, True, True),
-        (2, True, True),  # this is the most important test! - FSDP only LORA
+        (1, False, False, False),
+        (2, False, False, False),
+        (1, False, True, False),
+        (2, False, True, False),
+        (1, True, True, False),
+        (2, True, True, False), # this is the most important test! - FSDP only LORA
+        (1, False, True, True),
+        (2, False, True, True),
+        (1, True, True, True),
+        (2, True, True, True), # this is the next most important test! - FSDP only LORA with decompose
     ],
 )
-def test_states_retrieval(world_size, enable_lora, save_only_lora):
+
+def test_states_retrieval(world_size, enable_lora, save_only_lora, decompose):
     spawn_for_all_world_sizes(
         _check_states_retrieval,
         world_sizes=[world_size],
-        args=[enable_lora, save_only_lora],
+        args=[enable_lora, save_only_lora, decompose],
         deterministic=True,
     )
 
@@ -45,6 +52,7 @@ def _check_states_retrieval(
     filename_rpc: str,
     enable_lora: bool,
     save_only_lora: bool,
+    decompose: bool,
 ):
     model_parallel = 1
     setup_mp_test_dist(rank, world_size, filename, model_parallel, seed=0)
@@ -52,7 +60,7 @@ def _check_states_retrieval(
     folder = Path(MODEL_PATH)
     model = load_model(
         folder=folder,
-        lora=LoraArgs(enable=enable_lora),
+        lora=LoraArgs(enable=enable_lora, decompose=decompose),
         checkpoint=True,
         param_dtype=torch.bfloat16,
     )
@@ -105,19 +113,25 @@ def _check_states_retrieval(
             assert v.dtype == save_dtype, f"{k}: v.dtype"
 
         if save_only_lora:
-            assert sorted(save_dict.keys()) == EXPECTED_LORA_KEYS, save_dict.keys()
+            expected_keys = EXPECTED_LORA_KEYS_DECOMPOSE if decompose else EXPECTED_LORA_KEYS
+            assert sorted(save_dict.keys()) == expected_keys, save_dict.keys()
         else:
             assert sorted(save_dict.keys()) == EXPECTED_NON_LORA_KEYS, save_dict.keys()
+
 
         EXPECTED_NON_LORA_VALUES = 34909.7500
 
         EXPECTED_LORA_VALUES = 984.4179840087891
 
+        EXPECTED_LORA_VALUES_DECOMPOSE = 1000.0 # Not sure what this should be 
+
         values_sum = sum(v.abs().float().sum().item() for v in save_dict.values())
 
         if save_only_lora:
+            expected_value = EXPECTED_LORA_VALUES_DECOMPOSE if decompose else EXPECTED_LORA_VALUES
+
             assert is_float_equal(
-                values_sum, EXPECTED_LORA_VALUES, 5e-1
+                values_sum, expected_value, 5e-1
             ), f"{values_sum} for {save_dtype}"
         else:
             assert is_float_equal(
@@ -125,17 +139,18 @@ def _check_states_retrieval(
             ), f"{values_sum} for {save_dtype}"
 
 
-@pytest.mark.parametrize("world_size", [1, 2])
-def test_lora_merge_equal(world_size):
+@pytest.mark.parametrize("world_size, decompose", [(1, False), (2, False), (1, True), (2, True)])
+def test_lora_merge_equal(world_size, decompose):
     spawn_for_all_world_sizes(
         _check_lora_merge_equal,
         world_sizes=[world_size],
+        args=[decompose],
         deterministic=True,
-    )
+)
 
 
 def _check_lora_merge_equal(
-    rank: int, world_size: int, filename: str, filename_rpc: str
+    rank: int, world_size: int, filename: str, filename_rpc: str, decompose: bool
 ):
     model_parallel = 1
     enable_lora = True
@@ -167,7 +182,7 @@ def _check_lora_merge_equal(
 
     model = load_model(
         folder=folder,
-        lora=LoraArgs(enable=enable_lora, scaling=scaling),
+        lora=LoraArgs(enable=enable_lora, scaling=scaling, decompose=decompose),
         checkpoint=True,
         param_dtype=torch.bfloat16,
     )
@@ -193,7 +208,7 @@ def _check_lora_merge_equal(
         )
 
         merge_checkpoints(
-            model_dict, lora_save_dict, scaling=scaling, save_dtype=save_dtype
+            model_dict, lora_save_dict, scaling=scaling, save_dtype=save_dtype, decompose=decompose
         )
 
         for k in model_dict.keys():

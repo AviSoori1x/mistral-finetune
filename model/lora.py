@@ -25,6 +25,7 @@ class LoRALinear(nn.Module):
         scaling: float,
         dropout: float,
         bias: bool = False,
+        decompose: bool = False,
     ):
         super().__init__()
 
@@ -34,6 +35,7 @@ class LoRALinear(nn.Module):
         self.bias = bias
         self.rank = rank
         self.scaling = scaling
+        self.decompose = decompose
 
         self.dropout = nn.Dropout(p=dropout)
 
@@ -47,6 +49,8 @@ class LoRALinear(nn.Module):
             self.out_features,
             bias=self.bias,
         )
+        if self.decompose == True:
+            self.lora_magnitude = nn.Parameter(torch.ones(1, self.out_features))
 
         self.frozen_W = nn.Linear(self.in_features, self.out_features, bias=self.bias)
 
@@ -63,6 +67,11 @@ class LoRALinear(nn.Module):
             up_weight = self.lora_B.weight
 
             weight = up_weight.mm(down_weight) * self.scaling
+
+            if self.decompose == True:
+                lora_output_norm_weight = weight/(weight.norm(p=2, dim=1, keepdim=True) + 1e-9)
+                weight = self.lora_magnitude * lora_output_norm_weight
+                
 
             weight += self.frozen_W.weight
         return weight
@@ -87,10 +96,16 @@ class LoRALinear(nn.Module):
             self.frozen_W.load_state_dict({"weight": w_ref}, assign=True)
 
     def forward(self, x: torch.Tensor):
-        lora = self.lora_B(self.lora_A(self.dropout(x)))
-        return self.frozen_W(x) + lora * self.scaling
+
+        lora = self.lora_B(self.lora_A(self.dropout(x)))* self.scaling
+
+        if self.decompose == True:
+            lora_output_norm_weight = lora/(lora.norm(p=2, dim=1, keepdim=True) + 1e-9)
+            lora = self.lora_magnitude * lora_output_norm_weight
+
+        return self.frozen_W(x) + lora 
 
     def __repr__(self) -> str:
-        return "{}Linear(in_features={}, out_features={}, r={}, dropout={})".format(
-            "LoRA", self.in_features, self.out_features, self.rank, self.dropout.p
+        return "{}Linear(in_features={}, out_features={}, r={}, dropout={}, decompose={})".format(
+            "LoRA", self.in_features, self.out_features, self.rank, self.dropout.p, self.decompose
         )
