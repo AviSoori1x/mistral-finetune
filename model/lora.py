@@ -49,7 +49,7 @@ class LoRALinear(nn.Module):
             self.out_features,
             bias=self.bias,
         )
-        if self.decompose == True:
+        if self.decompose:
             self.lora_magnitude = nn.Parameter(torch.ones(1, self.out_features))
 
         self.frozen_W = nn.Linear(self.in_features, self.out_features, bias=self.bias)

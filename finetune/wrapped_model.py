@@ -92,6 +92,9 @@ def initialize_lora_parameters(model: torch.nn.Module, param_dtype: torch.dtype)
                     torch.nn.init.kaiming_uniform_(param, a=math.sqrt(5))
                 elif m_name.split(".")[-1] == "lora_B":
                     torch.nn.init.zeros_(param)
+
+                elif m_name.split(".")[-1] == "lora_magnitude":
+                    torch.nn.init.ones_(param)
                 else:
                     raise ValueError("Only Lora layers should be randomly initialized.")
 
