@@ -83,6 +83,7 @@ def initialize_lora_parameters(model: torch.nn.Module, param_dtype: torch.dtype)
     for m_name, module in model.named_modules():
         if all(p.is_meta for p in module.parameters()):
             for p_name, param in module.named_parameters():
+                print(f"m_name: {m_name}, p_name {p_name}")
                 module._parameters[p_name] = torch.nn.Parameter(
                     torch.empty_like(param, device="cpu", dtype=param_dtype)
                 )
@@ -97,7 +98,7 @@ def initialize_lora_parameters(model: torch.nn.Module, param_dtype: torch.dtype)
                     torch.nn.init.ones_(param)
                 else:
                     raise ValueError("Only Lora layers should be randomly initialized.")
-
+                
 
 def load_args(folder: Path, lora: LoraArgs) -> ModelArgs:
     with open(folder / "params.json", "r") as f:
@@ -154,6 +155,9 @@ def load_model(
             logger.info("Initializing lora layers ...")
             # initialize LoRA layers
             initialize_lora_parameters(model, param_dtype)
+            unititialized_params = [name for name, param in model.named_parameters() if param.is_meta]
+            if unititialized_params:
+                logger.warning(f"Uninitialized parameters: {unititialized_params}")
 
         assert not any(
             p.is_meta for p in model.parameters()
