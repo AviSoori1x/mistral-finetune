@@ -14,6 +14,7 @@ from torch.distributed.fsdp.fully_sharded_data_parallel import FullyShardedDataP
 
 from model.args import ModelArgs, MoeArgs
 from model.transformer import Transformer, TransformerBlock
+from model.lora import LoRALinear
 
 from .args import LoraArgs
 from .checkpointing import Checkpointer
@@ -80,6 +81,18 @@ def initialize_lora_parameters(model: torch.nn.Module, param_dtype: torch.dtype)
     See original paper for more info: https://arxiv.org/abs/2106.09685 and
     original github repo: https://github.com/microsoft/LoRA/blob/a0a92e0f26c067cf94747bdbf1ce73793fa44d19/loralib/layers.py#L122
     """
+
+
+    # - - - - - - -- - - - - -- - - -
+    for m_name, module in model.named_modules():
+        if isinstance(module, LoRALinear) and module.decompose:
+            if hasattr(module, 'lora_magnitude'):
+                print(f"Initializing lora_magnitude for {m_name}")
+                module.lora_magnitude = torch.nn.Parameter(
+                    torch.ones(1, module.out_features, device="cpu", dtype=param_dtype)
+                )
+
+    # -  - -  - - - - -- 
     for m_name, module in model.named_modules():
         if all(p.is_meta for p in module.parameters()):
             for p_name, param in module.named_parameters():
@@ -155,9 +168,9 @@ def load_model(
             logger.info("Initializing lora layers ...")
             # initialize LoRA layers
             initialize_lora_parameters(model, param_dtype)
-            unititialized_params = [name for name, param in model.named_parameters() if param.is_meta]
-            if unititialized_params:
-                logger.warning(f"Uninitialized parameters: {unititialized_params}")
+            # unititialized_params = [name for name, param in model.named_parameters() if param.is_meta]
+            # if unititialized_params:
+            #     logger.warning(f"Uninitialized parameters: {unititialized_params}")
 
         assert not any(
             p.is_meta for p in model.parameters()

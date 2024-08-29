@@ -70,7 +70,7 @@ class LoRALinear(nn.Module):
             weight = up_weight.mm(down_weight) * self.scaling
 
             if self.decompose:
-                print(f"Using lora_magnitude in forward: {self.lora_magnitude}")
+                # print(f"Using lora_magnitude in forward: {self.lora_magnitude}")
                 lora_output_norm_weight = weight/(weight.norm(p=2, dim=1, keepdim=True) + 1e-9)
                 weight = self.lora_magnitude * lora_output_norm_weight
                 
