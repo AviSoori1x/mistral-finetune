@@ -50,7 +50,7 @@ class LoRALinear(nn.Module):
             bias=self.bias,
         )
         if self.decompose:
-            print(f"Using lora_magnitude in forward: {self.lora_magnitude}")
+            # print(f"Using lora_magnitude in forward: {self.lora_magnitude}")
             self.lora_magnitude = nn.Parameter(torch.ones(1, self.out_features))
 
         self.frozen_W = nn.Linear(self.in_features, self.out_features, bias=self.bias)
@@ -102,7 +102,7 @@ class LoRALinear(nn.Module):
         lora = self.lora_B(self.lora_A(self.dropout(x)))* self.scaling
 
         if self.decompose:
-            print(f"Using lora_magnitude in forward: {self.lora_magnitude}")
+            # print(f"Using lora_magnitude in forward: {self.lora_magnitude}")
             lora_output_norm_weight = lora/(lora.norm(p=2, dim=1, keepdim=True) + 1e-9)
             lora = self.lora_magnitude * lora_output_norm_weight
 
