@@ -98,6 +98,7 @@ class LoRALinear(nn.Module):
             self.frozen_W.load_state_dict({"weight": w_ref}, assign=True)
 
     def forward(self, x: torch.Tensor):
+        print(f"LoRALinear forward - Input shape: {x.shape}")
 
         lora = self.lora_B(self.lora_A(self.dropout(x)))* self.scaling
 
@@ -105,8 +106,10 @@ class LoRALinear(nn.Module):
             # print(f"Using lora_magnitude in forward: {self.lora_magnitude}")
             lora_output_norm_weight = lora/(lora.norm(p=2, dim=1, keepdim=True) + 1e-9)
             lora = self.lora_magnitude * lora_output_norm_weight
+        result = self.frozen_W(x) + lora
+        print(f"LoRALinear forward - Output shape: {result.shape}")
 
-        return self.frozen_W(x) + lora 
+        return result 
 
     def __repr__(self) -> str:
         return "{}Linear(in_features={}, out_features={}, r={}, dropout={}, decompose={})".format(
