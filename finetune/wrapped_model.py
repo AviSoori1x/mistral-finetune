@@ -14,7 +14,7 @@ from torch.distributed.fsdp.fully_sharded_data_parallel import FullyShardedDataP
 
 from model.args import ModelArgs, MoeArgs
 from model.transformer import Transformer, TransformerBlock
-from model.lora import LoRALinear, OnesLayer
+from model.lora import LoRALinear #, OnesLayer
 
 from .args import LoraArgs
 from .checkpointing import Checkpointer
