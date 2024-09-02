@@ -218,16 +218,16 @@ class Transformer(nn.Module):
 
         freqs_cis = self.freqs_cis[positions].to(device=h.device)
 
-        print(f"Transformer forward - Input shape: {input_ids.shape}")
+        #print(f"Transformer forward - Input shape: {input_ids.shape}")
 
 
         for layer in self.layers:
             h = layer(h, freqs_cis, att_mask)
-            print(f"Transformer forward - After layer {layer}: shape {h.shape}")
+            #print(f"Transformer forward - After layer {layer}: shape {h.shape}")
 
         result = self.output(self.norm(h)).float()
             
-        print(f"Transformer forward - Final output shape: {result.shape}")
+        #print(f"Transformer forward - Final output shape: {result.shape}")
 
         return result
 
