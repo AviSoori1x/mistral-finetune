@@ -84,13 +84,13 @@ def initialize_lora_parameters(model: torch.nn.Module, param_dtype: torch.dtype)
 
 
     # - - - - - - -- - - - - -- - - -
-    # for m_name, module in model.named_modules():
-    #     if isinstance(module, LoRALinear) and module.decompose:
-    #         if hasattr(module, 'lora_magnitude'):
-    #             print(f"Initializing lora_magnitude for {m_name}")
-    #             module.lora_magnitude = torch.nn.Parameter(
-    #                 torch.ones(1, module.out_features, device="cpu", dtype=param_dtype)
-    #             )
+    for m_name, module in model.named_modules():
+        if isinstance(module, LoRALinear) and module.decompose:
+            if hasattr(module, 'lora_magnitude'):
+                # print(f"Initializing lora_magnitude for {m_name}")
+                module.lora_magnitude = torch.nn.Parameter(
+                    torch.ones(1, module.out_features, device="cpu", dtype=param_dtype)
+                )
 
     # -  - -  - - - - -- 
     for m_name, module in model.named_modules():
