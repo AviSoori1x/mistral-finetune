@@ -14,7 +14,7 @@ from torch.distributed.fsdp.fully_sharded_data_parallel import FullyShardedDataP
 
 from model.args import ModelArgs, MoeArgs
 from model.transformer import Transformer, TransformerBlock
-from model.lora import LoRALinear
+from model.lora import LoRALinear, OnesLayer
 
 from .args import LoraArgs
 from .checkpointing import Checkpointer
@@ -107,8 +107,8 @@ def initialize_lora_parameters(model: torch.nn.Module, param_dtype: torch.dtype)
                 elif m_name.split(".")[-1] == "lora_B":
                     torch.nn.init.zeros_(param)
 
-                # elif m_name.split(".")[-1] == "lora_magnitude":
-                #     torch.nn.init.ones_(param)
+                elif m_name.split(".")[-1] == "lora_magnitude":
+                    torch.nn.init.ones_(param)
                 else:
                     raise ValueError("Only Lora layers should be randomly initialized.")
                 
@@ -214,7 +214,7 @@ def load_model(
         device_id=torch.cuda.current_device(),
         sync_module_states=True,
         param_init_fn=param_init_fn,
-        # use_orig_params=True,
+        use_orig_params=True,
     )
     main_logger_info("Model sharded!")
 
