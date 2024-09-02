@@ -84,13 +84,13 @@ def initialize_lora_parameters(model: torch.nn.Module, param_dtype: torch.dtype)
 
 
     # - - - - - - -- - - - - -- - - -
-    for m_name, module in model.named_modules():
-        if isinstance(module, LoRALinear) and module.decompose:
-            if hasattr(module, 'lora_magnitude'):
-                print(f"Initializing lora_magnitude for {m_name}")
-                module.lora_magnitude = torch.nn.Parameter(
-                    torch.ones(1, module.out_features, device="cpu", dtype=param_dtype)
-                )
+    # for m_name, module in model.named_modules():
+    #     if isinstance(module, LoRALinear) and module.decompose:
+    #         if hasattr(module, 'lora_magnitude'):
+    #             print(f"Initializing lora_magnitude for {m_name}")
+    #             module.lora_magnitude = torch.nn.Parameter(
+    #                 torch.ones(1, module.out_features, device="cpu", dtype=param_dtype)
+    #             )
 
     # -  - -  - - - - -- 
     for m_name, module in model.named_modules():
@@ -107,8 +107,8 @@ def initialize_lora_parameters(model: torch.nn.Module, param_dtype: torch.dtype)
                 elif m_name.split(".")[-1] == "lora_B":
                     torch.nn.init.zeros_(param)
 
-                elif m_name.split(".")[-1] == "lora_magnitude":
-                    torch.nn.init.ones_(param)
+                # elif m_name.split(".")[-1] == "lora_magnitude":
+                #     torch.nn.init.ones_(param)
                 else:
                     raise ValueError("Only Lora layers should be randomly initialized.")
                 
@@ -214,7 +214,7 @@ def load_model(
         device_id=torch.cuda.current_device(),
         sync_module_states=True,
         param_init_fn=param_init_fn,
-        use_orig_params=True,
+        # use_orig_params=True,
     )
     main_logger_info("Model sharded!")
 

@@ -4,6 +4,14 @@ import torch
 import torch.nn as nn
 
 
+class OnesLayer(nn.Module):
+    def __init__(self, shape):
+        super().__init__()
+        self.weight = nn.Parameter(torch.ones(shape))
+
+    def forward(self, x):
+        return self.weight * x
+
 class LoRALinear(nn.Module):
     """
     Implementation of:
@@ -51,7 +59,8 @@ class LoRALinear(nn.Module):
         )
         if self.decompose:
             # print(f"Using lora_magnitude in forward: {self.lora_magnitude}")
-            self.lora_magnitude = nn.Parameter(torch.ones(1, self.out_features))
+            #self.lora_magnitude = nn.Parameter(torch.ones(1, self.out_features))
+            self.lora_magnitude = OnesLayer((1, self.out_features))
 
         self.frozen_W = nn.Linear(self.in_features, self.out_features, bias=self.bias)
 
@@ -72,7 +81,7 @@ class LoRALinear(nn.Module):
             if self.decompose:
                 # print(f"Using lora_magnitude in forward: {self.lora_magnitude}")
                 lora_output_norm_weight = weight/(weight.norm(p=2, dim=1, keepdim=True) + 1e-9)
-                weight = self.lora_magnitude * lora_output_norm_weight
+                weight = self.lora_magnitude(lora_output_norm_weight)
                 
 
             weight += self.frozen_W.weight
@@ -105,7 +114,7 @@ class LoRALinear(nn.Module):
         if self.decompose:
             # print(f"Using lora_magnitude in forward: {self.lora_magnitude}")
             lora_output_norm_weight = lora/(lora.norm(p=2, dim=1, keepdim=True) + 1e-9)
-            lora = self.lora_magnitude * lora_output_norm_weight
+            lora = self.lora_magnitude(lora_output_norm_weight)
         result = self.frozen_W(x) + lora
         print(f"LoRALinear forward - Output shape: {result.shape}")
 
