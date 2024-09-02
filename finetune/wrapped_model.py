@@ -214,7 +214,7 @@ def load_model(
         device_id=torch.cuda.current_device(),
         sync_module_states=True,
         param_init_fn=param_init_fn,
-        # use_orig_params=True,
+        use_orig_params=True,
     )
     main_logger_info("Model sharded!")
 
