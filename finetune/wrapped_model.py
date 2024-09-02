@@ -96,7 +96,7 @@ def initialize_lora_parameters(model: torch.nn.Module, param_dtype: torch.dtype)
     for m_name, module in model.named_modules():
         if all(p.is_meta for p in module.parameters()):
             for p_name, param in module.named_parameters():
-                print(f"m_name: {m_name}, p_name {p_name}")
+                # print(f"m_name: {m_name}, p_name {p_name}")
                 module._parameters[p_name] = torch.nn.Parameter(
                     torch.empty_like(param, device="cpu", dtype=param_dtype)
                 )
