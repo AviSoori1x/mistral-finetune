@@ -23,6 +23,7 @@ class TrainState:
     this_eval_samples_per_second: Optional[float] = None
     this_eval_loss: Optional[float] = None
 
+
     def start_step(self):
         self.step += 1
         self.begin_step_time = time.time()

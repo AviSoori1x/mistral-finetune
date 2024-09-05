@@ -5,7 +5,7 @@ import pprint
 from contextlib import ExitStack
 from pathlib import Path
 from typing import TYPE_CHECKING
-
+import time
 import fire
 import torch.cuda
 import torch.distributed as dist
@@ -70,6 +70,9 @@ def _train(
     args: TrainArgs,
     exit_stack: ExitStack,
 ):
+    #record start time
+    start_time = time.time()
+
     # 1. Initial setup and checks
     set_random_seed(args.seed)
 
@@ -320,6 +323,9 @@ def _train(
                 dtype=param_dtype,
                 instruct_tokenizer=instruct_tokenizer,
             )
+    end_time = time.time()
+    total_runtime = end_time - start_time
+    main_logger_info(f"Total runtime: {total_runtime:.2f} seconds")
 
     main_logger_info("done!")
 
