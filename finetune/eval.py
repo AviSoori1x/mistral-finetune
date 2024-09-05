@@ -1,5 +1,6 @@
 import logging
 from typing import List
+import time
 
 import numpy as np
 import torch.cuda
@@ -70,6 +71,8 @@ def evaluate(
     dist.all_reduce(eval_loss, op=dist.ReduceOp.SUM)
     eval_loss /= total_num_samples
 
+    state.this_eval_samples_per_second = total_num_samples / (time.time() - state.begin_step_time)
+    state.this_eval_runtime = time.time() - state.begin_step_time
     state.this_eval_loss = eval_loss.item()
     state.this_eval_perplexity = (2**eval_loss).item()
 

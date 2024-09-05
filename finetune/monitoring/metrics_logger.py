@@ -43,14 +43,23 @@ def get_eval_logs(
     train_loss: float,
     perplexity: Optional[float],
     eval_loss: Optional[float],
+    eval_runtime: Optional[float],
+    eval_samples_per_second: Optional[float],
 ) -> Dict[str, Union[float, int]]:
     eval_dict = {"step": step, "train_loss": train_loss}
 
     if perplexity is not None:
         eval_dict["perplexity"] = perplexity
 
+    if eval_samples_per_second is not None:
+        eval_dict["eval_samples_per_second"] = eval_samples_per_second
+
     if eval_loss is not None:
         eval_dict["eval_loss"] = eval_loss
+
+    if eval_runtime is not None:
+        eval_dict["eval_runtime"] = eval_runtime
+
     return eval_dict
 
 
@@ -91,6 +100,8 @@ def eval_log_msg(logs: Dict[str, Union[float, int]]) -> str:
     for key, fmt, new_name in [
         ("step", "06", None),
         ("perplexity", ".3f", "eval_perplexity"),
+        ("eval_samples_per_second", ".1f", None),
+        ("eval_runtime", ".3f", None),
         ("eval_loss", ".3f", None),
         ("train_loss", ".3f", None),
     ]:

@@ -290,7 +290,8 @@ def _train(
             evaluate(model, eval_batches, state)
 
             eval_logs = get_eval_logs(
-                state.step, avg_loss, state.this_eval_perplexity, state.this_eval_loss
+                state.step, avg_loss, state.this_eval_perplexity, state.this_eval_loss, state.this_eval_runtime, 
+                state.this_eval_samples_per_second
             )
 
             main_logger_info(eval_log_msg(eval_logs))

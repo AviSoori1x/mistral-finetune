@@ -18,7 +18,9 @@ class TrainState:
     n_seen_tokens: int = 0
     this_step_time: float = 0.0
     begin_step_time: float = 0.0
+    this_eval_runtime: Optional[float] = None
     this_eval_perplexity: Optional[float] = None
+    this_eval_samples_per_second: Optional[float] = None
     this_eval_loss: Optional[float] = None
 
     def start_step(self):
