@@ -24,7 +24,7 @@ def get_train_logs(
     train_args: TrainArgs,
 ) -> Dict[str, Union[float, int]]:
     metrics = {
-        "lr": lr,
+       "lr": lr,
         "step": state.step,
         "loss": loss,
         "percent_done": 100 * state.step / train_args.max_steps,
@@ -33,6 +33,9 @@ def get_train_logs(
         "wps": state.wps,
         "avg_wps": state.avg_wps,
         "eta_in_seconds": state.eta,
+        "runtime": state.runtime,
+        "steps_per_second": state.steps_per_second,
+        "grad_norm": state.grad_norm,
     }
 
     return metrics
@@ -89,6 +92,7 @@ def train_log_msg(
         ("avg_wps", ".1f", "avg_words_per_second"),
         ("runtime", ".2f", "runtime (s)"),
         ("steps_per_second", ".2f", "steps_per_second"),
+        ("grad_norm", ".3f", None),
         ("eta", "%Y-%m-%d %H:%M:%S", "ETA"),
     ]:
         name = key if new_name is None else new_name
