@@ -20,6 +20,7 @@ class TrainState:
     begin_step_time: float = 0.0
     this_eval_runtime: Optional[float] = None
     this_eval_perplexity: Optional[float] = None
+    this_eval_steps_per_second: Optional[float] = None
     this_eval_samples_per_second: Optional[float] = None
     this_eval_loss: Optional[float] = None
 
@@ -44,6 +45,11 @@ class TrainState:
     @property
     def avg_wps(self):
         return self.n_seen_tokens / self.elapsed_time
+    
+    #New
+    @property
+    def runtime(self):
+        return time.time() - self.begin_step_time
 
     @property
     def eta(self):
@@ -51,6 +57,12 @@ class TrainState:
         avg_time_per_step = self.elapsed_time / self.step
 
         return steps_left * avg_time_per_step
+    
+    #New
+    @property
+    def steps_per_second(self):
+        return self.step / self.elapsed_time
+    
 
 
 def set_random_seed(seed: int) -> None:

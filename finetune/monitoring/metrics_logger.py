@@ -43,6 +43,7 @@ def get_eval_logs(
     train_loss: float,
     perplexity: Optional[float],
     eval_loss: Optional[float],
+    eval_steps_per_second: Optional[float],
     eval_runtime: Optional[float],
     eval_samples_per_second: Optional[float],
 ) -> Dict[str, Union[float, int]]:
@@ -53,6 +54,9 @@ def get_eval_logs(
 
     if eval_samples_per_second is not None:
         eval_dict["eval_samples_per_second"] = eval_samples_per_second
+
+    if eval_steps_per_second is not None:
+        eval_dict["eval_steps_per_second"] = eval_steps_per_second
 
     if eval_loss is not None:
         eval_dict["eval_loss"] = eval_loss
@@ -83,6 +87,8 @@ def train_log_msg(
         ("allocated_mem", ".1f", "alloc_mem (GB)"),
         ("wps", ".1f", "words_per_second"),
         ("avg_wps", ".1f", "avg_words_per_second"),
+        ("runtime", ".2f", "runtime (s)"),
+        ("steps_per_second", ".2f", "steps_per_second"),
         ("eta", "%Y-%m-%d %H:%M:%S", "ETA"),
     ]:
         name = key if new_name is None else new_name
@@ -101,6 +107,7 @@ def eval_log_msg(logs: Dict[str, Union[float, int]]) -> str:
         ("step", "06", None),
         ("perplexity", ".3f", "eval_perplexity"),
         ("eval_samples_per_second", ".1f", None),
+        ("eval_steps_per_second", ".1f", None),
         ("eval_runtime", ".3f", None),
         ("eval_loss", ".3f", None),
         ("train_loss", ".3f", None),

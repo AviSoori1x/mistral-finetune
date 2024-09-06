@@ -26,6 +26,9 @@ def evaluate(
     state: TrainState,
 ):
     # Create fake samples to make FSDP happy for unbalanced data
+    #Each step is a batch
+    total_steps = len(batches)
+
     num_samples = torch.tensor([len(batches)], device="cuda", dtype=torch.long)
     all_num_samples = [torch.zeros_like(num_samples) for _ in range(get_world_size())]
 
@@ -74,6 +77,7 @@ def evaluate(
     # eval samples per second
     state.this_eval_samples_per_second = total_num_samples / (time.time() - state.begin_step_time)
     state.this_eval_runtime = time.time() - state.begin_step_time
+    state.this_eval_steps_per_second = total_steps / (time.time() - state.begin_step_time)  
     state.this_eval_loss = eval_loss.item()
     state.this_eval_perplexity = (2**eval_loss).item()
 

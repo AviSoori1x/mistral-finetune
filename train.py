@@ -71,7 +71,7 @@ def _train(
     exit_stack: ExitStack,
 ):
     #record start time
-    start_time = time.time()
+    # start_time = time.time()
 
     # 1. Initial setup and checks
     set_random_seed(args.seed)
@@ -273,8 +273,12 @@ def _train(
         # clip grad norm
         model.clip_grad_norm_(max_norm=args.max_norm)
 
+        grad_norm = torch.norm(torch.stack([p.grad.norm(2) for p in model.parameters() if p.grad is not None]))
+
+
         # optimizer step
         optimizer.step()
+
 
         # downcast params for forward & backward
         downcast_mixed_precision(model.parameters(), param_dtype=param_dtype)
@@ -294,7 +298,7 @@ def _train(
 
             eval_logs = get_eval_logs(
                 state.step, avg_loss, state.this_eval_perplexity, state.this_eval_loss, state.this_eval_runtime, 
-                state.this_eval_samples_per_second
+                state.this_eval_samples_per_second, state.this_eval_steps_per_second
             )
 
             main_logger_info(eval_log_msg(eval_logs))
@@ -312,6 +316,7 @@ def _train(
                 torch.cuda.memory_allocated(),
                 args,
             )
+            train_logs["grad_norm"] = grad_norm.item()
             main_logger_info(train_log_msg(state, logs=train_logs, loss=avg_loss))
             metrics_logger.log(train_logs, step=state.step)
 
@@ -323,10 +328,11 @@ def _train(
                 dtype=param_dtype,
                 instruct_tokenizer=instruct_tokenizer,
             )
-    end_time = time.time()
-    total_runtime = end_time - start_time
-    main_logger_info(f"Total runtime: {total_runtime:.2f} seconds")
-
+    # end_time = time.time()
+    # total_runtime = end_time - start_time
+    # train_steps_per_second = state.step / total_runtime
+    # main_logger_info(f"Total runtime: {total_runtime:.2f} seconds")
+    # main_logger_info(f"Train steps per second: {train_steps_per_second:.2f}")
     main_logger_info("done!")
 
 
