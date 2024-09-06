@@ -47,10 +47,6 @@ class TrainState:
     def avg_wps(self):
         return self.n_seen_tokens / self.elapsed_time
     
-    #New
-    @property
-    def runtime(self):
-        return time.time() - self.begin_step_time
 
     @property
     def eta(self):

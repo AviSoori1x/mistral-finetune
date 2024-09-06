@@ -33,7 +33,6 @@ def get_train_logs(
         "wps": state.wps,
         "avg_wps": state.avg_wps,
         "eta_in_seconds": state.eta,
-        "runtime": state.runtime,
         "steps_per_second": state.steps_per_second,
         "grad_norm": state.grad_norm,
     }
@@ -90,7 +89,6 @@ def train_log_msg(
         ("allocated_mem", ".1f", "alloc_mem (GB)"),
         ("wps", ".1f", "words_per_second"),
         ("avg_wps", ".1f", "avg_words_per_second"),
-        ("runtime", ".2f", "runtime (s)"),
         ("steps_per_second", ".2f", "steps_per_second"),
         ("grad_norm", ".3f", None),
         ("eta", "%Y-%m-%d %H:%M:%S", "ETA"),
