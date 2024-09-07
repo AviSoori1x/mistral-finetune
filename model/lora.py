@@ -151,7 +151,7 @@ class LoRALinear(nn.Module):
             #column_norm = (frozen_weight + self.lora_B.weight @ self.lora_A.weight).norm(p=2, dim=1).detach()
             column_norm = ((self.frozen_W(x) + lora).norm(p=2, dim=1)+ 1e-9).detach()
             result = self.frozen_W(x) + lora
-            result = result/column_norm.view(1,1,-1)
+            result = result/column_norm#.view(1,1,-1)
             result = self.lora_magnitude(result)*self.scaling
 
               
