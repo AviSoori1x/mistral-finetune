@@ -96,9 +96,9 @@ class LoRALinear(nn.Module):
             lora = up_weight.mm(down_weight) 
 
             if self.decompose:
-                column_norm = ((self.frozen_W + lora).norm(p=2, dim=1)+ 1e-9).detach()
+                column_norm = ((self.frozen_W + lora).norm(p=2, dim=1, keepdim=True)+ 1e-9).detach()
                 result = self.frozen_W + lora
-                result = result/column_norm.view(1,1,result.size(-1))
+                result = result/column_norm
                 result = self.lora_magnitude(result)*self.scaling
                 
             else: 
@@ -143,18 +143,18 @@ class LoRALinear(nn.Module):
     #     return result 
     
     def forward(self, x: torch.Tensor):
-        print(f"Input shape: {x.shape}")
-        lora = self.lora_B(self.lora_A(self.dropout(x)))
-        print(f"LoRA output shape: {lora.shape}")
+        print(f"Input shape: {x.shape}") # [8192, 4096]
+        lora = self.lora_B(self.lora_A(self.dropout(x))) 
+        print(f"LoRA output shape: {lora.shape}") #[8192, 4096]
 
         if self.decompose:
             frozen_output = self.frozen_W(x)
-            print(f"Frozen output shape: {frozen_output.shape}")
+            print(f"Frozen output shape: {frozen_output.shape}") #
             result = frozen_output + lora
             print(f"Result shape before norm: {result.shape}")
-            column_norm = (result.norm(p=2, dim=1) + 1e-9).detach()
+            column_norm = (result.norm(p=2, dim=1, keepdim=True) + 1e-9).detach()
             print(f"Column norm shape: {column_norm.shape}")
-            result = result / column_norm.view(1, 1, -1)
+            result = result / column_norm
             result = self.lora_magnitude(result) * self.scaling
         else:
             result = self.frozen_W(x) + lora * self.scaling
