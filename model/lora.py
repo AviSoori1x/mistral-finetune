@@ -10,7 +10,7 @@ class OnesLayer(nn.Module):
         self.weight = nn.Parameter(torch.ones(shape))
 
     def forward(self, x):
-        return self.weight * x
+        return x * self.weight.view(1,1,-1)
 
 class LoRALinear(nn.Module):
     """
@@ -62,6 +62,7 @@ class LoRALinear(nn.Module):
             #self.lora_magnitude = nn.Parameter(torch.ones(1, self.out_features))
             self.lora_magnitude = OnesLayer((1, self.out_features))
 
+        # frozen_w is same as base_layer 
         self.frozen_W = nn.Linear(self.in_features, self.out_features, bias=self.bias)
 
         # make sure no LoRA weights are marked as "missing" in load_state_dict
@@ -71,21 +72,42 @@ class LoRALinear(nn.Module):
 
         self.register_load_state_dict_post_hook(ignore_missing_keys)
 
+    # def merge_weight(self):
+    #     with torch.no_grad():
+    #         down_weight = self.lora_A.weight
+    #         up_weight = self.lora_B.weight
+
+    #         weight = up_weight.mm(down_weight) * self.scaling
+
+    #         if self.decompose:
+    #             # print(f"Using lora_magnitude in forward: {self.lora_magnitude}")
+    #             lora_output_norm_weight = weight/(weight.norm(p=2, dim=1, keepdim=True) + 1e-9)
+    #             weight = self.lora_magnitude(lora_output_norm_weight)
+                
+
+    #         weight += self.frozen_W.weight
+    #     return weight
+    
     def merge_weight(self):
         with torch.no_grad():
             down_weight = self.lora_A.weight
             up_weight = self.lora_B.weight
 
-            weight = up_weight.mm(down_weight) * self.scaling
+            lora = up_weight.mm(down_weight) 
 
             if self.decompose:
-                # print(f"Using lora_magnitude in forward: {self.lora_magnitude}")
-                lora_output_norm_weight = weight/(weight.norm(p=2, dim=1, keepdim=True) + 1e-9)
-                weight = self.lora_magnitude(lora_output_norm_weight)
+                column_norm = ((self.frozen_W + lora).norm(p=2, dim=1)+ 1e-9).detach()
+                result = self.frozen_W + lora
+                result = result/column_norm.view(1,1,-1)
+                result = self.lora_magnitude(result)*self.scaling
                 
+            else: 
+                weight = self.frozen_W.weight + lora* self.scaling
+        return weight    
+    
 
-            weight += self.frozen_W.weight
-        return weight
+
+    ###
 
     def _load_from_state_dict(
         self,
@@ -106,19 +128,42 @@ class LoRALinear(nn.Module):
             # load frozen weights
             self.frozen_W.load_state_dict({"weight": w_ref}, assign=True)
 
+    # def forward(self, x: torch.Tensor):
+    #     # print(f"LoRALinear forward - Input shape: {x.shape}")
+
+    #     lora = self.lora_B(self.lora_A(self.dropout(x)))* self.scaling
+
+    #     if self.decompose:
+    #         # print(f"Using lora_magnitude in forward: {self.lora_magnitude}")
+    #         lora_output_norm_weight = lora/(lora.norm(p=2, dim=1, keepdim=True) + 1e-9)
+    #         lora = self.lora_magnitude(lora_output_norm_weight)
+    #     result = self.frozen_W(x) + lora
+    #     # print(f"LoRALinear forward - Output shape: {result.shape}")
+
+    #     return result 
+    
     def forward(self, x: torch.Tensor):
         # print(f"LoRALinear forward - Input shape: {x.shape}")
-
-        lora = self.lora_B(self.lora_A(self.dropout(x)))* self.scaling
+        #lora is output   
+        lora = self.lora_B(self.lora_A(self.dropout(x)))
 
         if self.decompose:
-            # print(f"Using lora_magnitude in forward: {self.lora_magnitude}")
-            lora_output_norm_weight = lora/(lora.norm(p=2, dim=1, keepdim=True) + 1e-9)
-            lora = self.lora_magnitude(lora_output_norm_weight)
-        result = self.frozen_W(x) + lora
-        # print(f"LoRALinear forward - Output shape: {result.shape}")
+            #column_norm = (frozen_weight + self.lora_B.weight @ self.lora_A.weight).norm(p=2, dim=1).detach()
+            column_norm = ((self.frozen_W(x) + lora).norm(p=2, dim=1)+ 1e-9).detach()
+            result = self.frozen_W(x) + lora
+            result = result/column_norm.view(1,1,-1)
+            result = self.lora_magnitude(result)*self.scaling
+
+              
+            #self.lora_magnitude.weight*self.scaling
+        else: 
+            result = self.frozen_W(x) + lora*self.scaling
 
         return result 
+
+
+
+
 
     def __repr__(self) -> str:
         return "{}Linear(in_features={}, out_features={}, r={}, dropout={}, decompose={})".format(
