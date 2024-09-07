@@ -10,7 +10,7 @@ class OnesLayer(nn.Module):
         self.weight = nn.Parameter(torch.ones(shape))
 
     def forward(self, x):
-        return x * self.weight.view(1,1,-1)
+        return x * self.weight
 
 class LoRALinear(nn.Module):
     """
