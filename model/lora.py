@@ -159,7 +159,7 @@ class LoRALinear(nn.Module):
         else:
             result = self.frozen_W(x) + lora * self.scaling
 
-        print(f"Final output shape: {result.shape}")
+        #print(f"Final output shape: {result.shape}")
         return result
 
 
