@@ -142,25 +142,51 @@ class LoRALinear(nn.Module):
 
     #     return result 
     
+    # def forward(self, x: torch.Tensor):
+    #     # print(f"Input shape: {x.shape}") # [8192, 4096]
+    #     lora = self.lora_B(self.lora_A(self.dropout(x))) 
+    #     # print(f"LoRA output shape: {lora.shape}") #[8192, 4096]
+
+    #     if self.decompose:
+    #         frozen_output = self.frozen_W(x)
+    #         # print(f"Frozen output shape: {frozen_output.shape}") #torch.Size([8192, 1024])
+    #         result = frozen_output + lora
+    #         # print(f"Result shape before norm: {result.shape}") #torch.Size([8192, 1024])
+    #         column_norm = (result.norm(p=2, dim=1, keepdim=True) + 1e-9).detach()
+    #         # print(f"Column norm shape: {column_norm.shape}") #torch.Size([8192, 1])
+    #         result = result / column_norm
+    #         result = self.lora_magnitude(result) * self.scaling
+    #     else:
+    #         result = self.frozen_W(x) + lora * self.scaling
+
+    #     #print(f"Final output shape: {result.shape}")
+    #     return result
+
     def forward(self, x: torch.Tensor):
-        # print(f"Input shape: {x.shape}") # [8192, 4096]
-        lora = self.lora_B(self.lora_A(self.dropout(x))) 
-        # print(f"LoRA output shape: {lora.shape}") #[8192, 4096]
+        lora = self.lora_B(self.lora_A(self.dropout(x)))
+        frozen_output = self.frozen_W(x)
 
         if self.decompose:
-            frozen_output = self.frozen_W(x)
-            # print(f"Frozen output shape: {frozen_output.shape}") #torch.Size([8192, 1024])
+            # Compute W + AB
+            combined_weight = self.frozen_W.weight + self.lora_B.weight @ self.lora_A.weight
+            
+            # Compute ||W + AB||
+            weight_norm = combined_weight.norm(p=2, dim=1, keepdim=True).detach() + 1e-9
+            
+            # Compute (W @ X + AB @ X)
             result = frozen_output + lora
-            # print(f"Result shape before norm: {result.shape}") #torch.Size([8192, 1024])
-            column_norm = (result.norm(p=2, dim=1, keepdim=True) + 1e-9).detach()
-            # print(f"Column norm shape: {column_norm.shape}") #torch.Size([8192, 1])
-            result = result / column_norm
+            
+            # Normalize: (W @ X + AB @ X) / ||W + AB||
+            result = result / weight_norm
+            
+            # Apply magnitude: m * ((W @ X + AB @ X) / ||W + AB||)
             result = self.lora_magnitude(result) * self.scaling
         else:
-            result = self.frozen_W(x) + lora * self.scaling
+            result = frozen_output + lora * self.scaling
 
-        #print(f"Final output shape: {result.shape}")
         return result
+
+    
 
 
 

@@ -69,7 +69,7 @@ class TrainArgs(Serializable):
 
     seq_len: int = 2048  # Number of tokens per batch per device.
     batch_size: int = 1
-    max_norm: float = 5.0  # Gradient clipping.
+    max_norm: float = 1.0  # Gradient clipping.
     max_steps: int = 100  # Number of training steps.
     log_freq: int = 1  # Number of steps between each logging.
 
