@@ -2,13 +2,13 @@ from typing import NamedTuple
 import torch
 import torch.nn as nn
 
-class OnesLayer(nn.Module):
+class MagnitudeLayer(nn.Module):
     def __init__(self, vector_data):
         super().__init__()
         self.magnitude = nn.Parameter(vector_data)
         
     def forward(self, x):
-        return x * self.magnitude.view(1, 1, -1)
+        return x * self.magnitude.view(1, -1)
 
 class LoRALinear(nn.Module):
     def __init__(
@@ -30,14 +30,13 @@ class LoRALinear(nn.Module):
         self.dropout = nn.Dropout(p=dropout)
         self.decompose = decompose
 
-        self.lora_A = nn.Linear(self.in_features, self.rank, bias=self.bias)
-        self.lora_B = nn.Linear(self.rank, self.out_features, bias=self.bias)
+        self.lora_A = nn.Linear(self.in_features, self.rank, bias=False)
+        self.lora_B = nn.Linear(self.rank, self.out_features, bias=False)
         self.frozen_W = nn.Linear(self.in_features, self.out_features, bias=self.bias)
 
         if self.decompose:
-            self.lora_magnitude_layer = OnesLayer(torch.ones(self.out_features))
+            self.lora_magnitude_layer = MagnitudeLayer(torch.ones(self.out_features))
 
-        # make sure no LoRA weights are marked as "missing" in load_state_dict
         def ignore_missing_keys(m: nn.Module, incompatible_keys: NamedTuple):
             incompatible_keys.missing_keys[:] = []
         self.register_load_state_dict_post_hook(ignore_missing_keys)
@@ -46,20 +45,9 @@ class LoRALinear(nn.Module):
         with torch.no_grad():
             down_weight = self.lora_A.weight
             up_weight = self.lora_B.weight
-            lora_weight = up_weight.mm(down_weight) * self.scaling
-            combined_weight = self.frozen_W.weight + lora_weight
-            
-            if self.decompose:
-                # Normalize the combined weight
-                norm = combined_weight.norm(p=2, dim=1, keepdim=True)
-                normalized_weight = combined_weight / norm
-                
-                # Apply magnitude scaling
-                final_weight = normalized_weight * self.lora_magnitude_layer.magnitude.view(-1, 1)
-            else:
-                final_weight = combined_weight
-
-        return final_weight
+            weight = up_weight.mm(down_weight) * self.scaling
+            weight += self.frozen_W.weight
+        return weight
 
     def _load_from_state_dict(
         self,
@@ -77,16 +65,17 @@ class LoRALinear(nn.Module):
             self.frozen_W.load_state_dict({"weight": w_ref}, assign=True)
 
     def forward(self, x: torch.Tensor):
+        frozen_output = self.frozen_W(x)
+        lora_output = self.lora_B(self.lora_A(self.dropout(x)))
+
         if self.decompose:
-            lora_output = self.lora_B(self.lora_A(self.dropout(x)))
-            frozen_output = self.frozen_W(x)
-            combined_output = frozen_output + lora_output
-            column_norm = (self.frozen_W.weight + self.lora_B.weight @ self.lora_A.weight).norm(p=2, dim=1).detach()
-            normalized_output = combined_output / column_norm.view(1, 1, -1)
-            return self.lora_magnitude_layer(normalized_output)
+            combined_weight = self.frozen_W.weight + self.lora_B.weight @ self.lora_A.weight * self.scaling
+            column_norm = combined_weight.norm(p=2, dim=0, keepdim=True).detach() + 1e-9
+            normalized_weight = combined_weight / column_norm
+            combined_output = x @ normalized_weight.T
+            return self.lora_magnitude_layer(combined_output)
         else:
-            lora_output = self.lora_B(self.lora_A(self.dropout(x)))
-            return self.frozen_W(x) + lora_output * self.scaling
+            return frozen_output + lora_output * self.scaling
 
     def __repr__(self) -> str:
         return "{}Linear(in_features={}, out_features={}, r={}, dropout={}, decompose={})".format(
