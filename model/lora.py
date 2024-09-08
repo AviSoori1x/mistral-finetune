@@ -10,7 +10,7 @@ class OnesLayer(nn.Module):
         self.weight = nn.Parameter(torch.ones(shape))
 
     def forward(self, x):
-        return x * self.weight
+        return x * self.weight.unsqueeze(0)  # Add batch dimension
 
 class LoRALinear(nn.Module):
     """
@@ -185,7 +185,7 @@ class LoRALinear(nn.Module):
             print(f"Normalized weight shape: {normalized_weight.shape}")
             
             # Apply magnitude: m * ((W + AB) / ||W + AB||) * x
-            result = self.lora_magnitude(normalized_weight.T @ x.T).T
+            result = self.lora_magnitude(x @ normalized_weight.T)
             print(f"Result shape (decompose): {result.shape}")
         else:
             result = frozen_output + lora_output * self.scaling
