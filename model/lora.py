@@ -163,6 +163,13 @@ class LoRALinear(nn.Module):
     #     return result
 
     def forward(self, x: torch.Tensor):
+        original_shape = x.shape
+        if len(original_shape) == 3:
+            batch_size, seq_len, hidden_dim = original_shape
+            x = x.view(-1, hidden_dim)
+        elif len(original_shape) != 2:
+            raise ValueError(f"Unexpected input shape: {original_shape}")
+
         frozen_output = self.frozen_W(x)
         lora_output = self.lora_B(self.lora_A(self.dropout(x)))
 
@@ -171,18 +178,21 @@ class LoRALinear(nn.Module):
             combined_weight = self.frozen_W.weight + self.lora_B.weight @ self.lora_A.weight
             
             # Compute ||W + AB||
-            column_norm = combined_weight.norm(p=2, dim=1).detach() + 1e-9
+            column_norm = combined_weight.norm(p=2, dim=0).detach() + 1e-9
             
             # Compute (W @ X + AB @ X)
             result = frozen_output + lora_output
             
             # Normalize: (W @ X + AB @ X) / ||W + AB||
-            result = result / column_norm.view(1, 1, -1)
+            result = result / column_norm
             
             # Apply magnitude: m * ((W @ X + AB @ X) / ||W + AB||)
             result = self.lora_magnitude(result)
         else:
             result = frozen_output + lora_output * self.scaling
+
+        if len(original_shape) == 3:
+            result = result.view(batch_size, seq_len, -1)
 
         return result
 
