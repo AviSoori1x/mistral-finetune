@@ -2,7 +2,7 @@ from typing import NamedTuple
 import torch
 import torch.nn as nn
 
-class MagnitudeLayer(nn.Module):
+class OnesLayer(nn.Module):
     def __init__(self, vector_data):
         super().__init__()
         self.magnitude = nn.Parameter(vector_data)
@@ -35,7 +35,7 @@ class LoRALinear(nn.Module):
         self.frozen_W = nn.Linear(self.in_features, self.out_features, bias=self.bias)
 
         if self.decompose:
-            self.lora_magnitude_layer = MagnitudeLayer(torch.ones(self.out_features))
+            self.lora_magnitude_layer = OnesLayer(torch.ones(self.out_features))
 
         def ignore_missing_keys(m: nn.Module, incompatible_keys: NamedTuple):
             incompatible_keys.missing_keys[:] = []
