@@ -177,6 +177,8 @@ class LoRALinear(nn.Module):
             result = frozen_output + lora
             
             # Normalize: (W @ X + AB @ X) / ||W + AB||
+            # Ensure weight_norm has the correct shape for broadcasting
+            weight_norm = weight_norm.view(1, -1)  # Shape: (1, out_features)
             result = result / weight_norm
             
             # Apply magnitude: m * ((W @ X + AB @ X) / ||W + AB||)
