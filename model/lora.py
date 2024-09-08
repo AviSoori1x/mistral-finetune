@@ -46,9 +46,20 @@ class LoRALinear(nn.Module):
         with torch.no_grad():
             down_weight = self.lora_A.weight
             up_weight = self.lora_B.weight
-            weight = up_weight.mm(down_weight) * self.scaling
-            weight += self.frozen_W.weight
-        return weight
+            lora_weight = up_weight.mm(down_weight) * self.scaling
+            combined_weight = self.frozen_W.weight + lora_weight
+            
+            if self.decompose:
+                # Normalize the combined weight
+                norm = combined_weight.norm(p=2, dim=1, keepdim=True)
+                normalized_weight = combined_weight / norm
+                
+                # Apply magnitude scaling
+                final_weight = normalized_weight * self.lora_magnitude_layer.magnitude.view(-1, 1)
+            else:
+                final_weight = combined_weight
+
+        return final_weight
 
     def _load_from_state_dict(
         self,
