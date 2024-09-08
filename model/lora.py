@@ -163,34 +163,33 @@ class LoRALinear(nn.Module):
     #     return result
 
     def forward(self, x: torch.Tensor):
-        original_shape = x.shape
-        if len(original_shape) == 3:
-            batch_size, seq_len, hidden_dim = original_shape
-            x = x.view(-1, hidden_dim)
-        elif len(original_shape) != 2:
-            raise ValueError(f"Unexpected input shape: {original_shape}")
-
+        print(f"Input shape: {x.shape}")
+        
         frozen_output = self.frozen_W(x)
+        print(f"Frozen output shape: {frozen_output.shape}")
+        
         lora_output = self.lora_B(self.lora_A(self.dropout(x)))
+        print(f"LoRA output shape: {lora_output.shape}")
 
         if self.decompose:
             # Compute W + AB
-            combined_weight = self.frozen_W.weight + self.lora_B.weight @ self.lora_A.weight
+            combined_weight = self.frozen_W.weight + self.lora_B.weight @ self.lora_A.weight * self.scaling
+            print(f"Combined weight shape: {combined_weight.shape}")
             
             # Compute ||W + AB||
-            column_norm = combined_weight.norm(p=2, dim=0).detach() + 1e-9
+            column_norm = combined_weight.norm(p=2, dim=0, keepdim=True).detach() + 1e-9
+            print(f"Column norm shape: {column_norm.shape}")
             
-            # Compute (W @ X + AB @ X)
-            result = frozen_output + lora_output
+            # Normalize: (W + AB) / ||W + AB||
+            normalized_weight = combined_weight / column_norm
+            print(f"Normalized weight shape: {normalized_weight.shape}")
             
-            # Normalize: (W @ X + AB @ X) / ||W + AB||
-            result = result / column_norm
-            
-            # Apply magnitude: m * ((W @ X + AB @ X) / ||W + AB||)
-            result = self.lora_magnitude(result)
+            # Apply magnitude: m * ((W + AB) / ||W + AB||)
+            result = self.lora_magnitude(normalized_weight @ x)
+            print(f"Result shape (decompose): {result.shape}")
         else:
             result = frozen_output + lora_output * self.scaling
-
+            print(f"Result shape (non-decompose): {result.shape}")
 
         return result
 
