@@ -163,28 +163,26 @@ class LoRALinear(nn.Module):
     #     return result
 
     def forward(self, x: torch.Tensor):
-        lora = self.lora_B(self.lora_A(self.dropout(x)))
         frozen_output = self.frozen_W(x)
+        lora_output = self.lora_B(self.lora_A(self.dropout(x)))
 
         if self.decompose:
             # Compute W + AB
             combined_weight = self.frozen_W.weight + self.lora_B.weight @ self.lora_A.weight
             
             # Compute ||W + AB||
-            weight_norm = combined_weight.norm(p=2, dim=1, keepdim=True).detach() + 1e-9
+            column_norm = combined_weight.norm(p=2, dim=1).detach() + 1e-9
             
             # Compute (W @ X + AB @ X)
-            result = frozen_output + lora
+            result = frozen_output + lora_output
             
             # Normalize: (W @ X + AB @ X) / ||W + AB||
-            # Ensure weight_norm has the correct shape for broadcasting
-            weight_norm = weight_norm.view(1, -1)  # Shape: (1, out_features)
-            result = result / weight_norm
+            result = result / column_norm.view(1, 1, -1)
             
             # Apply magnitude: m * ((W @ X + AB @ X) / ||W + AB||)
-            result = self.lora_magnitude(result) * self.scaling
+            result = self.lora_magnitude(result)
         else:
-            result = frozen_output + lora * self.scaling
+            result = frozen_output + lora_output * self.scaling
 
         return result
 
