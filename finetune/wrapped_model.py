@@ -107,7 +107,7 @@ def initialize_lora_parameters(model: torch.nn.Module, param_dtype: torch.dtype)
                 elif m_name.split(".")[-1] == "lora_B":
                     torch.nn.init.zeros_(param)
 
-                elif m_name.split(".")[-1] == "lora_magnitude":
+                elif m_name.split(".")[-1] == "lora_magnitude_layer":
                     torch.nn.init.ones_(param)
                 else:
                     raise ValueError("Only Lora layers should be randomly initialized.")
