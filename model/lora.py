@@ -1,6 +1,7 @@
 from typing import NamedTuple
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class OnesLayer(nn.Module):
     def __init__(self, vector_data):
@@ -30,9 +31,13 @@ class LoRALinear(nn.Module):
         self.dropout = nn.Dropout(p=dropout)
         self.decompose = decompose
 
-        self.lora_A = nn.Linear(self.in_features, self.rank, bias=False)
-        self.lora_B = nn.Linear(self.rank, self.out_features, bias=False)
-        self.frozen_W = nn.Linear(self.in_features, self.out_features, bias=self.bias)
+        self.lora_A = nn.Parameter(torch.randn(rank, in_features) / rank**0.5)
+        self.lora_B = nn.Parameter(torch.zeros(out_features, rank))
+        self.frozen_W = nn.Parameter(torch.randn(out_features, in_features) / in_features**0.5, requires_grad=False)
+        if bias:
+            self.bias_param = nn.Parameter(torch.zeros(out_features))
+        else:
+            self.register_parameter('bias_param', None)
 
         if self.decompose:
             self.lora_magnitude_layer = OnesLayer(torch.ones(self.out_features))
@@ -43,11 +48,15 @@ class LoRALinear(nn.Module):
 
     def merge_weight(self):
         with torch.no_grad():
-            down_weight = self.lora_A.weight
-            up_weight = self.lora_B.weight
-            weight = up_weight.mm(down_weight) * self.scaling
-            weight += self.frozen_W.weight
-        return weight
+            lora_weight = self.lora_B @ self.lora_A * self.scaling
+            combined_weight = self.frozen_W + lora_weight
+            if self.decompose:
+                column_norm = combined_weight.norm(p=2, dim=0, keepdim=True).detach() + 1e-9
+                normalized_weight = combined_weight / column_norm
+                final_weight = normalized_weight * self.lora_magnitude_layer.magnitude.view(-1, 1)
+            else:
+                final_weight = combined_weight
+        return final_weight
 
     def _load_from_state_dict(
         self,
@@ -59,23 +68,25 @@ class LoRALinear(nn.Module):
         unexpected_keys,
         error_msgs,
     ):
-        key_name = prefix + "weight"
+        key_name = prefix + "frozen_W"
         if key_name in state_dict:
-            w_ref = state_dict[key_name]
-            self.frozen_W.load_state_dict({"weight": w_ref}, assign=True)
+            self.frozen_W.data.copy_(state_dict[key_name])
 
     def forward(self, x: torch.Tensor):
-        frozen_output = self.frozen_W(x)
-        lora_output = self.lora_B(self.lora_A(self.dropout(x)))
-
+        combined_weight = self.frozen_W + self.lora_B @ self.lora_A * self.scaling
+        
         if self.decompose:
-            combined_weight = self.frozen_W.weight + self.lora_B.weight @ self.lora_A.weight * self.scaling
             column_norm = combined_weight.norm(p=2, dim=0, keepdim=True).detach() + 1e-9
             normalized_weight = combined_weight / column_norm
-            combined_output = x @ normalized_weight.T
-            return self.lora_magnitude_layer(combined_output)
+            output = F.linear(x, normalized_weight)
+            output = self.lora_magnitude_layer(output)
         else:
-            return frozen_output + lora_output * self.scaling
+            output = F.linear(x, combined_weight)
+        
+        if self.bias_param is not None:
+            output += self.bias_param
+
+        return output
 
     def __repr__(self) -> str:
         return "{}Linear(in_features={}, out_features={}, r={}, dropout={}, decompose={})".format(
