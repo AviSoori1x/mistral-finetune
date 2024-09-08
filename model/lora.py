@@ -191,8 +191,6 @@ class LoRALinear(nn.Module):
         else:
             result = frozen_output + lora_output * self.scaling
 
-        if len(original_shape) == 3:
-            result = result.view(batch_size, seq_len, -1)
 
         return result
 
