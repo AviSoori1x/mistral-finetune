@@ -184,8 +184,8 @@ class LoRALinear(nn.Module):
             normalized_weight = combined_weight / column_norm
             print(f"Normalized weight shape: {normalized_weight.shape}")
             
-            # Apply magnitude: m * ((W + AB) / ||W + AB||)
-            result = self.lora_magnitude(normalized_weight @ x)
+            # Apply magnitude: m * ((W + AB) / ||W + AB||) * x
+            result = self.lora_magnitude(normalized_weight.T @ x.T).T
             print(f"Result shape (decompose): {result.shape}")
         else:
             result = frozen_output + lora_output * self.scaling
