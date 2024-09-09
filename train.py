@@ -344,7 +344,7 @@ def _train(
     total_flops_param = flops_per_token_param * total_tokens
     total_tflops_param = total_flops_param / 1e12
 
-    main_logger_info(f"Total FLOPs: {total_flops_param:,.0f}")
+    main_logger_info(f"Total FLOPs during training process: {total_flops_param:,.0f}")
 
 
     main_logger_info("done!")
