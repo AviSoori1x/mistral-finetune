@@ -16,6 +16,7 @@ class TrainState:
     step: int = 0
     elapsed_time: float = 0.0
     n_seen_tokens: int = 0
+    n_seen_samples: int = 0
     this_step_time: float = 0.0
     begin_step_time: float = 0.0
     this_eval_runtime: Optional[float] = None
@@ -31,14 +32,24 @@ class TrainState:
         self.step += 1
         self.begin_step_time = time.time()
 
-    def end_step(self, n_batch_tokens: int):
+    def end_step(self, n_batch_tokens: int, n_batch_samples: int):
         self.this_step_time = time.time() - self.begin_step_time
         self.this_step_tokens = n_batch_tokens
+        self.this_step_samples = n_batch_samples
 
         self.elapsed_time += self.this_step_time
         self.n_seen_tokens += self.this_step_tokens
+        self.n_seen_samples += self.this_step_samples
 
         self.begin_step_time = time.time()
+
+    @property
+    def epochs_completed(self):
+        return self.n_seen_tokens / self.total_dataset_tokens if self.total_dataset_tokens > 0 else 0
+
+    @property
+    def samples_per_second(self):
+        return self.n_seen_samples / self.elapsed_time if self.elapsed_time > 0 else 0
 
     @property
     def wps(self):

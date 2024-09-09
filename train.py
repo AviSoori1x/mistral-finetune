@@ -310,10 +310,9 @@ def _train(
             eval_logger.log(eval_logs, step=state.step)
 
         # Timing
-        state.end_step(n_batch_tokens)
+        state.end_step(n_batch_tokens, args.batch_size*args.num_microbatches)
 
         if state.step % args.log_freq == 0:
-            epochs_completed = state.n_seen_tokens / state.total_dataset_tokens
             train_logs = get_train_logs(
                 state,
                 avg_loss,
@@ -323,7 +322,6 @@ def _train(
                 args,
             )
             train_logs["grad_norm"] = grad_norm.item()
-            train_logs["epochs_completed"] = epochs_completed
             main_logger_info(train_log_msg(state, logs=train_logs, loss=avg_loss))
             metrics_logger.log(train_logs, step=state.step)
 
