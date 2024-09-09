@@ -92,6 +92,7 @@ def train_log_msg(
         ("steps_per_second", ".2f", "steps_per_second"),
         ("grad_norm", ".3f", None),
         ("eta", "%Y-%m-%d %H:%M:%S", "ETA"),
+        ("epochs_completed", ".2f", None),
     ]:
         name = key if new_name is None else new_name
         try:

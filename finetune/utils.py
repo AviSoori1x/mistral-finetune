@@ -24,6 +24,7 @@ class TrainState:
     this_eval_samples_per_second: Optional[float] = None
     this_eval_loss: Optional[float] = None
     grad_norm: Optional[float] = None
+    total_dataset_tokens: int = 0
 
 
     def start_step(self):

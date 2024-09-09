@@ -156,6 +156,10 @@ def _train(
         is_eval=False,
     )
 
+    # Calculate total number of tokens in the dataset
+    total_dataset_tokens = sum(len(batch.x) for batch in data_loader)
+    state.total_dataset_tokens = total_dataset_tokens
+
     if not args.no_eval:
         assert (
             args.data.eval_instruct_data != ""
@@ -309,6 +313,7 @@ def _train(
         state.end_step(n_batch_tokens)
 
         if state.step % args.log_freq == 0:
+            epochs_completed = state.n_seen_tokens / state.total_dataset_tokens
             train_logs = get_train_logs(
                 state,
                 avg_loss,
@@ -318,6 +323,7 @@ def _train(
                 args,
             )
             train_logs["grad_norm"] = grad_norm.item()
+            train_logs["epochs_completed"] = epochs_completed
             main_logger_info(train_log_msg(state, logs=train_logs, loss=avg_loss))
             metrics_logger.log(train_logs, step=state.step)
 
@@ -332,7 +338,11 @@ def _train(
     end_time = time.time()
     
     total_runtime = end_time - start_time
-    # train_steps_per_second = state.step / total_runtime
+
+     # Log the total runtime
+    metrics_logger.log({"total_runtime": total_runtime}, step=state.step)
+
+
     main_logger_info(f"Total runtime: {total_runtime:.2f} seconds")
     #Using the formula from the OpenAI paper (https://www.adamcasson.com/posts/transformer-flops)
 
@@ -350,6 +360,9 @@ def _train(
     total_flops_backward_pass = 2 * total_flops_forward_pass
     total_flops = total_flops_forward_pass + total_flops_backward_pass
 
+    metrics_logger.log({
+            "total_flops": total_flops
+        }, step=state.step)
 
     main_logger_info(f"Total FLOPs during training process: {total_flops:,.0f}")
 
