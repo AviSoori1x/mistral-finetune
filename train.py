@@ -371,3 +371,31 @@ def _train(
 if __name__ == "__main__":
     """See README.md for usage."""
     fire.Fire(train)
+
+# from torch.distributed import broadcast_object_list
+
+# # 7. Load data loaders
+# if get_rank() == 0:
+#     data_loader = build_data_loader(
+#         instruct_tokenizer=instruct_tokenizer,
+#         args=args.data,
+#         seq_len=args.seq_len,
+#         batch_size=args.batch_size,
+#         seed=args.seed,
+#         rank=0,
+#         world_size=1,
+#         is_eval=False,
+#     )
+#     # Calculate total number of tokens in the dataset
+#     total_dataset_tokens = sum(len(batch.x) for batch in data_loader)
+# else:
+#     data_loader = None
+#     total_dataset_tokens = 0
+
+# # Broadcast the data_loader and total_dataset_tokens to all processes
+# data_loader = dist.broadcast_object_list([data_loader], src=0)[0]
+# total_dataset_tokens = torch.tensor(total_dataset_tokens, device='cuda')
+# dist.broadcast(total_dataset_tokens, src=0)
+# total_dataset_tokens = total_dataset_tokens.item()
+
+# state.total_dataset_tokens = total_dataset_tokens
