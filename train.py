@@ -329,10 +329,24 @@ def _train(
                 instruct_tokenizer=instruct_tokenizer,
             )
     end_time = time.time()
+    
     total_runtime = end_time - start_time
     # train_steps_per_second = state.step / total_runtime
     main_logger_info(f"Total runtime: {total_runtime:.2f} seconds")
-    # main_logger_info(f"Train steps per second: {train_steps_per_second:.2f}")
+    #Using the approximate formula from the OpenAI paper (https://www.adamcasson.com/posts/transformer-flops)
+    #  Forward pass FLOPs: 2 * num_total_params
+    # Backward pass FLOPs: 4 * num_train_params
+    world_size = get_world_size()
+    total_tokens = state.n_seen_tokens
+    num_params = world_size * sum(p.numel() for p in model.parameters())
+    num_train_params = world_size * sum(p.numel() for p in model.parameters() if p.requires_grad)
+    flops_per_token_param = 2 * num_params + 4 * num_train_params
+    total_flops_param = flops_per_token_param * total_tokens
+    total_tflops_param = total_flops_param / 1e12
+
+    main_logger_info(f"Total FLOPs: {total_flops_param:,.0f}")
+
+
     main_logger_info("done!")
 
 
