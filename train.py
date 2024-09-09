@@ -39,6 +39,7 @@ from finetune.monitoring.metrics_logger import (
 )
 from finetune.monitoring.utils import set_logger
 from finetune.utils import (
+    openai_flops_per_token,
     TrainState,
     logged_closing,
     set_random_seed,
@@ -333,18 +334,24 @@ def _train(
     total_runtime = end_time - start_time
     # train_steps_per_second = state.step / total_runtime
     main_logger_info(f"Total runtime: {total_runtime:.2f} seconds")
-    #Using the approximate formula from the OpenAI paper (https://www.adamcasson.com/posts/transformer-flops)
-    #  Forward pass FLOPs: 2 * num_total_params
-    # Backward pass FLOPs: 4 * num_train_params
-    world_size = get_world_size()
-    total_tokens = state.n_seen_tokens
-    num_params = world_size * sum(p.numel() for p in model.parameters())
-    num_train_params = world_size * sum(p.numel() for p in model.parameters() if p.requires_grad)
-    flops_per_token_param = 2 * num_params + 4 * num_train_params
-    total_flops_param = flops_per_token_param * total_tokens
-    total_tflops_param = total_flops_param / 1e12
+    #Using the formula from the OpenAI paper (https://www.adamcasson.com/posts/transformer-flops)
 
-    main_logger_info(f"Total FLOPs during training process: {total_flops_param:,.0f}")
+    # Calculate total FLOPs
+    model_args = load_args(model_folder, args.lora)
+    flops_per_token = openai_flops_per_token(
+        n_layers=model_args.n_layers,
+        n_heads=model_args.n_heads,
+        d_model=model_args.dim,
+        n_ctx=args.seq_len,
+        n_vocab=model_args.vocab_size
+    )
+    total_tokens = state.n_seen_tokens
+    total_flops_forward_pass = flops_per_token * total_tokens
+    total_flops_backward_pass = 2 * total_flops_forward_pass
+    total_flops = total_flops_forward_pass + total_flops_backward_pass
+
+
+    main_logger_info(f"Total FLOPs during training process: {total_flops:,.0f}")
 
 
     main_logger_info("done!")

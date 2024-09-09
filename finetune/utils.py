@@ -93,3 +93,20 @@ def logged_closing(thing: Closable, name: str):
 
 def now_as_str() -> str:
     return datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+
+# From https://www.adamcasson.com/posts/transformer-flops
+def openai_flops_per_token(n_layers, n_heads, d_model, n_ctx, n_vocab, ff_ratio=4):
+    """Open AI method for forward pass FLOPs counting of decoder-only Transformer
+    """
+    d_attn = d_model // n_heads
+    d_ff = d_model * ff_ratio
+ 
+    embeddings = 4 * d_model
+    attn_qkv = 2 * n_layers * d_model * 3 * (d_attn * n_heads)
+    attn_mask = 2 * n_layers * n_ctx * (d_attn * n_heads)
+    attn_project = 2 * n_layers * (d_attn * n_heads) * d_model
+    ff = 2 * n_layers * 2 * d_model * d_ff
+    logits = 2 * d_model * n_vocab
+ 
+    return embeddings + attn_qkv + attn_mask + attn_project + ff + logits
