@@ -17,7 +17,7 @@ from typing import Iterator
 
 from finetune.args import TrainArgs
 from finetune.checkpointing import Checkpointer
-from finetune.data.data_loader import build_data_loader
+from finetune.data.data_loader import build_data_loader, Batch
 from finetune.distributed import (
     BACKEND,
     avg_aggregate,
@@ -58,6 +58,12 @@ logger = logging.getLogger("train")
 def main_logger_info(message: str) -> None:
     if get_rank() == 0:
         logger.info(message)
+
+def count_samples(data_loader: Iterator[Batch]) -> int:
+    total_samples = 0
+    for batch in data_loader:
+        total_samples += sum(batch.sizes)
+    return total_samples
 
 
 def train(config: str):
@@ -170,8 +176,13 @@ def _train(
         is_eval=False,
     )
 
+    # Calculate total number of samples
+    total_samples = count_samples(data_loader)
+    total_samples = avg_aggregate(total_samples) * get_world_size()
+    main_logger_info(f"Total number of samples in the training dataset: {total_samples}")
+
     # total_samples = len(list(build_data_loader))
-    # state = TrainState(args.max_steps, samples_per_step, total_samples)
+    state = TrainState(args.max_steps,int(total_samples))
 
 
 
@@ -225,8 +236,8 @@ def _train(
 
     
 
-    total_samples = len(data_loader.dataset) * get_world_size()
-    state = TrainState(args.max_steps, total_samples)
+    # total_samples = len(data_loader.dataset) * get_world_size()
+    # state = TrainState(args.max_steps, total_samples)
 
     # 10. Initialize checkpointer
     checkpointer = Checkpointer(
