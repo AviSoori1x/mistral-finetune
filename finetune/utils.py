@@ -13,6 +13,7 @@ logger = logging.getLogger("utils")
 @dataclasses.dataclass
 class TrainState:
     max_steps: int
+    total_samples: int
     step: int = 0
     elapsed_time: float = 0.0
     n_seen_tokens: int = 0
@@ -25,7 +26,6 @@ class TrainState:
     this_eval_samples_per_second: Optional[float] = None
     this_eval_loss: Optional[float] = None
     grad_norm: Optional[float] = None
-    total_dataset_tokens: int = 0
 
 
     def start_step(self):
@@ -44,8 +44,8 @@ class TrainState:
         self.begin_step_time = time.time()
 
     @property
-    def epochs_completed(self):
-        return self.n_seen_tokens / self.total_dataset_tokens if self.total_dataset_tokens > 0 else 0
+    def epochs_completed(self) -> float:
+        return self.n_seen_samples / self.total_samples if self.total_samples > 0 else 0.0
 
     @property
     def samples_per_second(self):
