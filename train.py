@@ -148,24 +148,23 @@ def _train(
     samples_per_step = args.batch_size * args.num_microbatches * get_world_size()
 
     # Calculate total samples in the dataset
-    total_samples = 0
+    # total_samples = 0
     # Calculate total samples in the dataset
-    total_samples = 0
-    data_loader_copy = build_data_loader(
-        instruct_tokenizer=instruct_tokenizer,
-        args=args.data,
-        seq_len=args.seq_len,
-        batch_size=args.batch_size,
-        seed=args.seed,
-        rank=get_rank(),
-        world_size=get_world_size(),
-        is_eval=False,
-    )
-    for batch in data_loader_copy:
-        total_samples += len(batch.x)
-    total_samples *= get_world_size()  # Account for all processes
+    # total_samples = 0
+    # data_loader_copy = build_data_loader(
+    #     instruct_tokenizer=instruct_tokenizer,
+    #     args=args.data,
+    #     seq_len=args.seq_len,
+    #     batch_size=args.batch_size,
+    #     seed=args.seed,
+    #     rank=get_rank(),
+    #     world_size=get_world_size(),
+    #     is_eval=False,
+    # )
+    # for batch in data_loader_copy:
+    #     total_samples += len(batch.x)
+    # total_samples *= get_world_size()  # Account for all processes
 
-    state = TrainState(args.max_steps, samples_per_step, total_samples)
 
     # 7. Load data loaders
     data_loader = build_data_loader(
@@ -178,6 +177,10 @@ def _train(
         world_size=get_world_size(),  # DDP world_size
         is_eval=False,
     )
+
+    total_samples = len(list(build_data_loader))
+    state = TrainState(args.max_steps, samples_per_step, total_samples)
+
 
 
     if not args.no_eval:
