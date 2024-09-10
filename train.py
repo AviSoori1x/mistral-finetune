@@ -150,7 +150,7 @@ def _train(
     ).instruct_tokenizer  # type: ignore
 
     # Calculate samples per step
-    samples_per_step = args.batch_size * args.num_microbatches * get_world_size()
+    # samples_per_step = args.batch_size * args.num_microbatches * get_world_size()
 
 
 
@@ -166,22 +166,22 @@ def _train(
         is_eval=False,
     )
 
-    # Efficient way to get total number of samples
-    if hasattr(data_loader, 'dataset') and hasattr(data_loader.dataset, '__len__'):
-        # If the dataset has a __len__ method, use it
-        total_samples = len(data_loader.dataset) * get_world_size()
-    elif hasattr(data_loader, '_size'):
-        # Some custom datasets might store their size in a _size attribute
-        total_samples = data_loader._size * get_world_size()
-    else:
-        # If we can't determine the exact size, we'll estimate based on the number of batches
-        # Note: This might be an underestimate if the last batch is not full
-        total_samples = len(data_loader) * args.batch_size * get_world_size()
+    # # Efficient way to get total number of samples
+    # if hasattr(data_loader, 'dataset') and hasattr(data_loader.dataset, '__len__'):
+    #     # If the dataset has a __len__ method, use it
+    #     total_samples = len(data_loader.dataset) * get_world_size()
+    # elif hasattr(data_loader, '_size'):
+    #     # Some custom datasets might store their size in a _size attribute
+    #     total_samples = data_loader._size * get_world_size()
+    # else:
+    #     # If we can't determine the exact size, we'll estimate based on the number of batches
+    #     # Note: This might be an underestimate if the last batch is not full
+    #     total_samples = len(data_loader) * args.batch_size * get_world_size()
 
-    main_logger_info(f"Total number of samples in the training dataset: {total_samples}")
+    # main_logger_info(f"Total number of samples in the training dataset: {total_samples}")
 
     # total_samples = len(list(build_data_loader))
-    state = TrainState(args.max_steps,int(total_samples))
+    state = TrainState(args.max_steps)
 
 
 
