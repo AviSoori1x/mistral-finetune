@@ -13,6 +13,7 @@ logger = logging.getLogger("utils")
 @dataclasses.dataclass
 class TrainState:
     max_steps: int
+    samples_per_step: int
     total_samples: int
     step: int = 0
     elapsed_time: float = 0.0
