@@ -11,6 +11,9 @@ import torch.cuda
 import torch.distributed as dist
 from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
 from torch.optim import AdamW, lr_scheduler
+from typing import Iterator
+
+
 
 from finetune.args import TrainArgs
 from finetune.checkpointing import Checkpointer
@@ -147,23 +150,12 @@ def _train(
     # Calculate samples per step
     samples_per_step = args.batch_size * args.num_microbatches * get_world_size()
 
-    # Calculate total samples in the dataset
-    # total_samples = 0
-    # Calculate total samples in the dataset
-    # total_samples = 0
-    # data_loader_copy = build_data_loader(
-    #     instruct_tokenizer=instruct_tokenizer,
-    #     args=args.data,
-    #     seq_len=args.seq_len,
-    #     batch_size=args.batch_size,
-    #     seed=args.seed,
-    #     rank=get_rank(),
-    #     world_size=get_world_size(),
-    #     is_eval=False,
-    # )
-    # for batch in data_loader_copy:
-    #     total_samples += len(batch.x)
-    # total_samples *= get_world_size()  # Account for all processes
+
+    # def count_samples(data_loader: Iterator[Batch]) -> int:
+    #     total_samples = 0
+    #     for batch in data_loader:
+    #         total_samples += sum(batch.sizes)
+    #     return total_samples
 
 
     # 7. Load data loaders
@@ -178,8 +170,8 @@ def _train(
         is_eval=False,
     )
 
-    total_samples = len(list(build_data_loader))
-    state = TrainState(args.max_steps, samples_per_step, total_samples)
+    # total_samples = len(list(build_data_loader))
+    # state = TrainState(args.max_steps, samples_per_step, total_samples)
 
 
 
