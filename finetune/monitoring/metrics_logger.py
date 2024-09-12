@@ -36,7 +36,7 @@ def get_train_logs(
         "steps_per_second": state.steps_per_second,
         "grad_norm": state.grad_norm,
         "samples_per_second": state.samples_per_second,
-        # "epochs_completed": state.epochs_completed,
+        "epochs_completed": state.epochs_completed,
     }
 
     return metrics
@@ -94,7 +94,7 @@ def train_log_msg(
         ("steps_per_second", ".2f", "steps_per_second"),
         ("grad_norm", ".3f", None),
         ("eta", "%Y-%m-%d %H:%M:%S", "ETA"),
-        # ("epochs_completed", ".2f", None),
+        ("epochs_completed", ".2f", None),
         ("samples_per_second", ".2f", "samples/second"),
     ]:
         name = key if new_name is None else new_name

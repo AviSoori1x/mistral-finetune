@@ -11,7 +11,7 @@ import torch.cuda
 import torch.distributed as dist
 from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
 from torch.optim import AdamW, lr_scheduler
-from typing import Iterator
+from typing import Iterator, List
 
 
 
@@ -48,6 +48,15 @@ from finetune.utils import (
     set_random_seed,
 )
 from finetune.wrapped_model import load_model, load_args
+from finetune.data.dataset import maybe_load_local_dataset
+from finetune.data.tokenize import TokenSample
+from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
+from finetune.data.tokenize import (
+    Mask,
+    SampleType,
+    TokenSample,
+    TrainingInstructSample,
+)
 
 if TYPE_CHECKING:
     from mistral_common.tokens.tokenizers.sentencepiece import InstructTokenizerBase
@@ -58,6 +67,19 @@ logger = logging.getLogger("train")
 def main_logger_info(message: str) -> None:
     if get_rank() == 0:
         logger.info(message)
+
+def count_tokens(instruct_tokenizer: InstructTokenizerBase, args: TrainArgs, rank: int, world_size: int) -> int:
+    tokens: List[TokenSample] = maybe_load_local_dataset(
+        Path(args.data.instruct_data),
+        chunk=True,
+        rank=rank,
+        world_size=world_size,
+        instruct_tokenizer=instruct_tokenizer,
+        sample_type=SampleType.INSTRUCT
+    )
+    num_tokens = torch.tensor(sum(len(t.tokens) for t in tokens), dtype=torch.long, device="cuda")
+    dist.all_reduce(num_tokens, op=dist.ReduceOp.SUM)
+    return num_tokens.item()
 
 
 
@@ -78,6 +100,14 @@ def _train(
 ):
     # record start time
     start_time = time.time()
+
+    if args.report_epochs:
+        instruct_tokenizer = MistralTokenizer.v3().instruct_tokenizer
+        num_tokens_in_dataset = count_tokens(instruct_tokenizer, args, get_rank(), get_world_size())
+        main_logger_info(f"Total number of tokens in the dataset: {num_tokens_in_dataset}")
+    else:
+        num_tokens_in_dataset = 0
+
 
     # 1. Initial setup and checks
     set_random_seed(args.seed)
@@ -181,7 +211,8 @@ def _train(
     # main_logger_info(f"Total number of samples in the training dataset: {total_samples}")
 
     # total_samples = len(list(build_data_loader))
-    state = TrainState(args.max_steps)
+    # Update this line:
+    state = TrainState(args.max_steps, num_tokens_in_dataset)
 
 
 
@@ -350,6 +381,7 @@ def _train(
                 args,
             )
             train_logs["grad_norm"] = grad_norm.item()
+            train_logs["epochs_completed"] = state.epochs_completed
             main_logger_info(train_log_msg(state, logs=train_logs, loss=avg_loss))
             metrics_logger.log(train_logs, step=state.step)
 

@@ -61,6 +61,7 @@ class TrainArgs(Serializable):
 
     run_dir: str  # Path to the directory where everything will be saved. It needs to be empty.
     # Name of the wandb run, if None it will be set to the name of the run_dir.
+    report_epochs: bool = False
 
     optim: OptimArgs = field(default_factory=OptimArgs)
     seed: int = 0
